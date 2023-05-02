@@ -33,6 +33,7 @@
 
 #include <memory>
 
+#include <boost/algorithm/hex.hpp>
 #include <glog/logging.h>
 
 #include "yb/dockv/partition.h"
@@ -115,6 +116,7 @@ const char* const kCompactAllTabletsOp = "compact_all_tablets";
 const char* const kReloadCertificatesOp = "reload_certificates";
 const char* const kRemoteBootstrapOp = "remote_bootstrap";
 const char* const kListMasterServersOp = "list_master_servers";
+const char* const kGetLockStatus = "get_lock_status";
 
 
 DEFINE_UNKNOWN_string(server_address, "localhost",
@@ -248,6 +250,10 @@ class TsAdminClient {
 
   // List information for all master servers.
   Status ListMasterServers();
+
+  Status GetLockStatus(const std::string& tablet_id,
+                       const vector<std::string>& transaction_ids,
+                       std::string* out);
 
  private:
   std::string addr_;
@@ -682,6 +688,30 @@ Status TsAdminClient::ListMasterServers() {
   return Status::OK();
 }
 
+Status TsAdminClient::GetLockStatus(const std::string& tablet_id,
+                                    const std::vector<std::string>& transaction_ids,
+                                    std::string* out) {
+  tserver::GetLockStatusRequestPB req;
+  tserver::GetLockStatusResponsePB resp;
+  RpcController rpc;
+
+  if (!tablet_id.empty()) {
+    req.set_tablet_id(tablet_id);
+  }
+  if (!transaction_ids.empty()) {
+    for (auto& txn_id : transaction_ids) {
+      req.add_transaction_ids(boost::algorithm::unhex(std::string(txn_id)));
+    }
+  }
+  rpc.set_timeout(timeout_);
+  RETURN_NOT_OK(ts_proxy_->GetLockStatus(req, &resp, &rpc));
+
+  if (resp.has_error()) {
+    return StatusFromPB(resp.error().status());
+  }
+  *out = resp.DebugString();
+  return Status::OK();
+}
 
 namespace {
 
@@ -710,7 +740,8 @@ void SetUsage(const char* argv0) {
       << " <tablet_id> <number of indexes> <index list> <start_key> <number of rows>\n"
       << "  " << kReloadCertificatesOp << "\n"
       << "  " << kRemoteBootstrapOp << " <server address to bootstrap from> <tablet_id>\n"
-      << "  " << kListMasterServersOp << "\n";
+      << "  " << kListMasterServersOp << "\n"
+      << "  " << kGetLockStatus << " <tablet_id> [<transaction_id>]" << "\n";
   google::SetUsageMessage(str.str());
 }
 
@@ -820,6 +851,22 @@ static int TsCliMain(int argc, char** argv) {
     } else {
       std::cout << "Tablet server is ready" << std::endl;
     }
+  } else if (op == kGetLockStatus) {
+    if (argc < 3) {
+      CHECK_ARGC_OR_RETURN_WITH_USAGE(op, 3);
+    }
+    string tablet_id = "";
+    if (argc > 2) {
+      tablet_id = argv[2];
+    }
+    vector<string> transaction_ids;
+    for (int i = 3 ; i < argc ; i++) transaction_ids.push_back(argv[i]);
+
+    string intents;
+    RETURN_NOT_OK_PREPEND_FROM_MAIN(client.GetLockStatus(tablet_id, transaction_ids, &intents),
+                                    "Unable to get lock status");
+
+    std::cout << intents << std::endl;
   } else if (op == kSetFlagOp) {
     CHECK_ARGC_OR_RETURN_WITH_USAGE(op, 4);
 
