@@ -341,7 +341,7 @@ class PgClientServiceImpl::Impl {
       auto remote_tserver = VERIFY_RESULT(client().GetRemoteTabletServer(permanent_uuid));
       auto proxy = remote_tserver->proxy();
       GetLockStatusRequestPB node_req;
-      node_req.set_transaction_id(req.transaction_id());
+      node_req.mutable_transaction_ids()->CopyFrom(req.transaction_ids());
       GetLockStatusResponsePB node_resp;
       controller.Reset();
       RETURN_NOT_OK(proxy->GetLockStatus(node_req, &node_resp, &controller));

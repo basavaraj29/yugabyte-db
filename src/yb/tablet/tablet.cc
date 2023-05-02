@@ -4246,8 +4246,7 @@ Status AddLockInfo(Slice key, Slice val, const SchemaPtr& schema, LockInfoPB* lo
   return Status::OK();
 }
 
-Status Tablet::GetLockStatus(const TransactionId& txn_id,
-                             SubTransactionId subtxn_id,
+Status Tablet::GetLockStatus(const std::set<TransactionId>& transaction_ids,
                              TabletLockInfoPB* tablet_lock_info) const {
   // TODO(pglocks): Support colocated tables
   if (metadata_->table_type() != PGSQL_TABLE_TYPE) {
@@ -4268,12 +4267,8 @@ Status Tablet::GetLockStatus(const TransactionId& txn_id,
   auto intent_iter = std::unique_ptr<rocksdb::Iterator>(intents_db_->NewIterator(read_options));
   intent_iter->SeekToFirst();
 
-  if (txn_id.IsNil()) {
-    // If txn_id is not set, iterate over all records in intents_db. In this case, we expect
-    // subtransaction_id is also not set.
-    RSTATUS_DCHECK(
-        subtxn_id == 0, InvalidArgument,
-        "Cannot restrict lock info to specific subtransaction_id unless transaction_id is set.");
+  if (transaction_ids.empty()) {
+    // If transaction_ids is not empty, iterate over all records in intents_db.
     while (intent_iter->Valid()) {
       auto key = intent_iter->key();
 
@@ -4294,24 +4289,31 @@ Status Tablet::GetLockStatus(const TransactionId& txn_id,
     return intent_iter->status();
   }
 
-  DCHECK(!txn_id.IsNil());
-  // If transaction_id is set, use txn reverse mapping of intents_db to find all intent keys
+  DCHECK(!transaction_ids.empty());
+  // If transaction_ids is set, use txn reverse mapping of intents_db to find all intent keys
   // efficiently.
-  // TODO(dtxn): Filter records by subtxn_id if set as well.
+  std::vector<dockv::KeyBytes> txn_intent_keys;
   static constexpr size_t kReverseKeySize = 1 + sizeof(TransactionId);
   char reverse_key_data[kReverseKeySize];
   reverse_key_data[0] = dockv::KeyEntryTypeAsChar::kTransactionId;
-  memcpy(&reverse_key_data[1], txn_id.data(), sizeof(TransactionId));
-  auto reverse_key = Slice(reverse_key_data, kReverseKeySize);
-  intent_iter->Seek(Slice(reverse_key));
+  for (auto& txn_id : transaction_ids) {
+    // Since the transaction_ids are sorted, we need not call SeekToFirst after every iteration.
+    memcpy(&reverse_key_data[1], txn_id.data(), sizeof(TransactionId));
+    auto reverse_key = Slice(reverse_key_data, kReverseKeySize);
+    intent_iter->Seek(reverse_key);
 
-  std::vector<dockv::KeyBytes> txn_intent_keys;
-  while (intent_iter->Valid() && intent_iter->key().compare_prefix(Slice(reverse_key)) == 0) {
-    DCHECK_EQ(intent_iter->key()[0], dockv::KeyEntryTypeAsChar::kTransactionId);
-    txn_intent_keys.emplace_back(intent_iter->value());
-    intent_iter->Next();
+    // Skip the transaction metadata entry.
+    if (intent_iter->Valid() && intent_iter->key().compare(reverse_key) == 0) {
+      intent_iter->Next();
+    }
+
+    while (intent_iter->Valid() && intent_iter->key().compare_prefix(reverse_key) == 0) {
+      DCHECK_EQ(intent_iter->key()[0], dockv::KeyEntryTypeAsChar::kTransactionId);
+      txn_intent_keys.emplace_back(intent_iter->value());
+      intent_iter->Next();
+    }
+    RETURN_NOT_OK(intent_iter->status());
   }
-  RETURN_NOT_OK(intent_iter->status());
 
   if (txn_intent_keys.empty()) {
     return Status::OK();

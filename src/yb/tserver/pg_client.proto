@@ -301,8 +301,8 @@ message PgGetLockStatusRequestPB {
   // The table to scan. If unset, scan all tables
   bytes table_id = 1;
 
-  // If specified, only read the locks associated with this txn_id.
-  bytes transaction_id = 2;
+  // If specified, only read the locks associated with these txn_id(s).
+  repeated bytes transaction_ids = 2;
 }
 
 message PgGetLockStatusResponsePB {
