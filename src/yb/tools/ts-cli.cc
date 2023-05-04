@@ -33,12 +33,14 @@
 
 #include <memory>
 
+#include <boost/algorithm/hex.hpp>
 #include <glog/logging.h>
 
 #include "yb/dockv/partition.h"
 #include "yb/qlexpr/ql_rowblock.h"
 #include "yb/common/schema_pbutil.h"
 #include "yb/common/schema.h"
+#include "yb/common/transaction.pb.h"
 #include "yb/common/wire_protocol.h"
 
 #include "yb/consensus/consensus.proxy.h"
@@ -115,6 +117,8 @@ const char* const kCompactAllTabletsOp = "compact_all_tablets";
 const char* const kReloadCertificatesOp = "reload_certificates";
 const char* const kRemoteBootstrapOp = "remote_bootstrap";
 const char* const kListMasterServersOp = "list_master_servers";
+const char* const kCancelTransaction = "cancel_transaction";
+const char* const kAbortTransaction = "abort_transaction";
 
 
 DEFINE_UNKNOWN_string(server_address, "localhost",
@@ -248,6 +252,12 @@ class TsAdminClient {
 
   // List information for all master servers.
   Status ListMasterServers();
+
+  Status CancelTransaction(const std::string& transaction_id,
+                           const std::vector<std::string>& status_tablet_ids);
+
+  Status AbortTransaction(const std::string& transaction_id,
+                          const std::string& status_tablet_id);
 
  private:
   std::string addr_;
@@ -682,6 +692,49 @@ Status TsAdminClient::ListMasterServers() {
   return Status::OK();
 }
 
+Status TsAdminClient::CancelTransaction(const std::string& transaction_id,
+                                        const std::vector<std::string>& status_tablet_ids) {
+  tserver::CancelTransactionRequestPB req;
+  tserver::CancelTransactionResponsePB resp;
+  RpcController rpc;
+
+  req.set_transaction_id(boost::algorithm::unhex(transaction_id));
+  for (const auto& status_tablet_id : status_tablet_ids) {
+    req.add_tablet_ids(status_tablet_id);
+  }
+
+  rpc.set_timeout(timeout_);
+  RETURN_NOT_OK(ts_proxy_->CancelTransaction(req, &resp, &rpc));
+
+  if (resp.has_error()) {
+    return StatusFromPB(resp.error().status());
+  }
+  std::cout << "Transaction Status = " << TransactionStatus_Name(resp.status()) << "\n";
+  return Status::OK();
+}
+
+Status TsAdminClient::AbortTransaction(const std::string& transaction_id,
+                                        const std::string& status_tablet_id) {
+  tserver::AbortTransactionRequestPB req;
+  tserver::AbortTransactionResponsePB resp;
+  RpcController rpc;
+
+  if (!status_tablet_id.empty()) {
+    req.set_tablet_id(status_tablet_id);
+  }
+  if (!transaction_id.empty()) {
+    req.set_transaction_id(boost::algorithm::unhex(transaction_id));
+  }
+  rpc.set_timeout(timeout_);
+  RETURN_NOT_OK(ts_proxy_->AbortTransaction(req, &resp, &rpc));
+
+  if (resp.has_error()) {
+    return StatusFromPB(resp.error().status());
+  }
+  std::cout << "Transaction Status = " << TransactionStatus_Name(resp.status()) << "\n";
+  return Status::OK();
+}
+
 
 namespace {
 
@@ -710,7 +763,9 @@ void SetUsage(const char* argv0) {
       << " <tablet_id> <number of indexes> <index list> <start_key> <number of rows>\n"
       << "  " << kReloadCertificatesOp << "\n"
       << "  " << kRemoteBootstrapOp << " <server address to bootstrap from> <tablet_id>\n"
-      << "  " << kListMasterServersOp << "\n";
+      << "  " << kListMasterServersOp << "\n"
+      << "  " << kAbortTransaction << " <transaction_id> <status_tablet_id>\n"
+      << "  " << kCancelTransaction << " <transaction_id> [<status_tablet_id>] [<status_tablet_id>]..." << "\n";
   google::SetUsageMessage(str.str());
 }
 
@@ -926,6 +981,25 @@ static int TsCliMain(int argc, char** argv) {
 
     RETURN_NOT_OK_PREPEND_FROM_MAIN(client.ListMasterServers(),
                                     "Unable to list master servers on " + addr);
+  } else if (op == kCancelTransaction) {
+    if (argc < 3) {
+      CHECK_ARGC_OR_RETURN_WITH_USAGE(op, 3);
+    }
+
+    const auto& transaction_id = argv[2];
+    std::vector<std::string> status_tablet_ids;
+    for (int i = 3 ; i < argc ; i++) {
+      status_tablet_ids.push_back(argv[i]);
+    }
+    RETURN_NOT_OK_PREPEND_FROM_MAIN(client.CancelTransaction(transaction_id, status_tablet_ids),
+                                    "Unable to cancel transaction");
+  } else if (op == kAbortTransaction) {
+    CHECK_ARGC_OR_RETURN_WITH_USAGE(op, 4);
+
+    const auto& transaction_id = argv[2];
+    const auto& status_tablet_id = argv[3];
+    RETURN_NOT_OK_PREPEND_FROM_MAIN(client.AbortTransaction(transaction_id, status_tablet_id),
+                                    "Unable to abort transaction");
   } else {
     std::cerr << "Invalid operation: " << op << std::endl;
     google::ShowUsageWithFlagsRestrict(argv[0], __FILE__);
