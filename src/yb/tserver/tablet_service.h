@@ -178,6 +178,10 @@ class TabletServiceImpl : public TabletServerServiceIf, public ReadTabletProvide
                      GetLockStatusResponsePB* resp,
                      rpc::RpcContext context) override;
 
+  void CancelTransaction(const CancelTransactionRequestPB* req,
+                         CancelTransactionResponsePB* resp,
+                         rpc::RpcContext context) override;
+
   void Shutdown() override;
 
  private:

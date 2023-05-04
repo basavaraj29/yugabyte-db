@@ -27,12 +27,15 @@
 #include "yb/client/table_creator.h"
 #include "yb/client/table_info.h"
 #include "yb/client/tablet_server.h"
+#include "yb/client/transaction_manager.h"
+#include "yb/client/transaction_rpc.h"
 
 #include "yb/dockv/partition.h"
 #include "yb/common/pg_types.h"
 #include "yb/common/wire_protocol.h"
 
 #include "yb/master/master_admin.proxy.h"
+#include "yb/master/master_defaults.h"
 #include "yb/master/master_heartbeat.pb.h"
 
 #include "yb/rpc/messenger.h"
@@ -46,7 +49,10 @@
 #include "yb/tserver/pg_response_cache.h"
 #include "yb/tserver/pg_sequence_cache.h"
 #include "yb/tserver/pg_table_cache.h"
+#include "yb/tserver/db_server_base.h"
+#include "yb/tserver/tablet_server.h"
 #include "yb/tserver/tablet_server_interface.h"
+#include "yb/tserver/ts_tablet_manager.h"
 #include "yb/tserver/tserver_service.pb.h"
 #include "yb/tserver/tserver_service.proxy.h"
 
@@ -486,6 +492,130 @@ class PgClientServiceImpl::Impl {
 
   void InvalidateTableCache() {
     table_cache_.InvalidateAll(CoarseMonoClock::Now());
+  }
+
+  rpc::RpcCommandPtr PrepareAbortTransactionRequest(
+      const PgCancelTransactionRequestPB& pg_req, CoarseTimePoint deadline,
+      const client::internal::RemoteTabletPtr& status_tablet,
+      const client::TransactionManager& txn_manager, client::AbortTransactionCallback callback) {
+    tserver::AbortTransactionRequestPB req;
+    req.set_transaction_id(pg_req.transaction_id());
+    req.set_tablet_id(pg_req.status_tablet_id());
+    return client::AbortTransaction(
+        deadline,
+        status_tablet.get(),
+        txn_manager.client(),
+        &req,
+        std::move(callback));
+  }
+
+  Status CancelTransactionWithStatusTablet(const PgCancelTransactionRequestPB& req,
+                                           PgCancelTransactionResponsePB* resp,
+                                           rpc::RpcContext* context) {
+    std::promise<Status> status_promise;
+    auto status_future = status_promise.get_future();
+    auto& txn_manager = tablet_server_.tablet_manager()->server()->TransactionManager();
+    auto deadline = context->GetClientDeadline();
+    client().LookupTabletById(
+        req.status_tablet_id(), /* table =*/ nullptr, master::IncludeInactive::kFalse,
+        master::IncludeDeleted::kFalse, deadline,
+        [this, &status_promise, &txn_manager, &deadline,
+            &req, pg_resp = resp] (const auto& lookup_result) {
+          if (!lookup_result.ok()) {
+            StatusToPB(lookup_result.status(), pg_resp->mutable_status());
+            status_promise.set_value(Status::OK());
+            return;
+          }
+
+          auto cancel_txn_handle = txn_manager.rpcs().InvalidHandle();
+          txn_manager.rpcs().RegisterAndStart(
+            PrepareAbortTransactionRequest(
+                req, deadline, *lookup_result, txn_manager, [&txn_manager, &cancel_txn_handle,
+                &status_promise, pg_resp](const auto &status, const auto& resp) {
+              if (!status.ok()) {
+                StatusToPB(status, pg_resp->mutable_status());
+              } else if (resp.has_error()) {
+                // TODO(pglocks): On receiving NOT_LEADER error, retry the operation. Refresh
+                // the client cache and send the operation to the new status tablet leader.
+                *pg_resp->mutable_status() = resp.error().status();
+              } else {
+                pg_resp->set_transaction_status(resp.status());
+              }
+              txn_manager.rpcs().Unregister(&cancel_txn_handle);
+              status_promise.set_value(Status::OK());
+            }),
+            &cancel_txn_handle);
+        }, client::UseCache::kTrue);
+
+    return status_future.get();
+  }
+
+  Status CancelTransaction(const PgCancelTransactionRequestPB& req,
+                           PgCancelTransactionResponsePB* resp,
+                           rpc::RpcContext* context) {
+    if (req.transaction_id().empty()) {
+      return STATUS_FORMAT(IllegalState,
+                           "Transaction Id not provided in PgCancelTransactionRequestPB");
+    }
+
+    if (!req.status_tablet_id().empty()) {
+      return CancelTransactionWithStatusTablet(req, resp, context);
+    }
+
+    std::vector<master::TSInformationPB> live_tservers;
+    RETURN_NOT_OK(tablet_server_.GetLiveTServers(&live_tservers));
+    std::vector<std::future<Status>> status_future;
+    std::vector<std::shared_ptr<tserver::CancelTransactionResponsePB>>
+        node_resp(live_tservers.size(), std::make_shared<tserver::CancelTransactionResponsePB>());
+
+    for (size_t i = 0 ; i < live_tservers.size() ; i++) {
+      const auto& live_ts = live_tservers[i];
+      const auto& permanent_uuid = live_ts.tserver_instance().permanent_uuid();
+      auto remote_tserver = VERIFY_RESULT(client().GetRemoteTabletServer(permanent_uuid));
+      auto placement_info = remote_tserver->cloud_info_pb();
+      auto txn_status_tablets = VERIFY_RESULT(client().GetTransactionStatusTablets(placement_info));
+      auto& global_status_tablets = txn_status_tablets.global_tablets;
+      auto& local_status_tablets = txn_status_tablets.placement_local_tablets;
+
+      tserver::CancelTransactionRequestPB node_req;
+      node_req.set_transaction_id(req.transaction_id());
+      *node_req.mutable_tablet_ids() = {global_status_tablets.begin(), global_status_tablets.end()};
+      node_req.mutable_tablet_ids()->MergeFrom(
+          {local_status_tablets.begin(), local_status_tablets.end()});
+
+      auto proxy = remote_tserver->proxy();
+      std::shared_ptr<rpc::RpcController> controller;
+      status_future.push_back(
+          MakeFuture<Status>([&, controller](auto callback) {
+            proxy->CancelTransactionAsync(
+                node_req, node_resp[i].get(), controller.get(), [callback, controller] {
+              callback(controller->status());
+            });
+          }));
+    }
+
+    Status status = Status::OK();
+    for (size_t i = 0 ; i < status_future.size() ; i++) {
+      const auto& s = status_future[i].get();
+      if (!s.ok()) {
+        status = s.CloneAndAppend(status.message());
+        continue;
+      }
+      if (node_resp[i]->has_error()) {
+        const auto& status_from_pb = StatusFromPB(node_resp[i]->error().status());
+        status = status_from_pb.CloneAndAppend(status.message());
+        continue;
+      }
+      status = Status::OK();
+      resp->set_transaction_status(node_resp[i]->status());
+      break;
+    }
+
+    if (!status.ok()) {
+      StatusToPB(status, resp->mutable_status());
+    }
+
+    return Status::OK();
   }
 
   #define PG_CLIENT_SESSION_METHOD_FORWARD(r, data, method) \

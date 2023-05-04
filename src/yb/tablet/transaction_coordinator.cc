@@ -1290,6 +1290,27 @@ class TransactionCoordinator::Impl : public TransactionStateContext,
     ExecutePostponedLeaderActions(&actions);
   }
 
+  void Cancel(const std::string& transaction_id, int64_t term, TransactionAbortCallback callback) {
+    auto txn_id_or_status = FullyDecodeTransactionId(transaction_id);
+    if (!txn_id_or_status.ok()) {
+      callback(txn_id_or_status.status());
+      return;
+    }
+    {
+      std::lock_guard<std::mutex> lock(managed_mutex_);
+      auto it = managed_transactions_.find(*txn_id_or_status);
+      if (it == managed_transactions_.end()) {
+        VLOG_WITH_PREFIX_AND_FUNC(4) << "transaction_id: " << *txn_id_or_status << " not found.";
+        callback(STATUS_FORMAT(
+            NotFound,
+            Format("Transaction with id: $0 not found at coordinator of status tablet: $1",
+                   *txn_id_or_status, context_.tablet_id())));
+        return;
+      }
+    }
+    Abort(*txn_id_or_status, term, std::move(callback));
+  }
+
   size_t test_count_transactions() {
     std::lock_guard<std::mutex> lock(managed_mutex_);
     return managed_transactions_.size();
@@ -1874,6 +1895,13 @@ void TransactionCoordinator::Abort(const std::string& transaction_id,
                                    int64_t term,
                                    TransactionAbortCallback callback) {
   impl_->Abort(transaction_id, term, std::move(callback));
+}
+
+void TransactionCoordinator::Cancel(
+    const std::string& transaction_id,
+    int64_t term,
+    TransactionAbortCallback callback) {
+  return impl_->Cancel(transaction_id, term, std::move(callback));
 }
 
 std::string TransactionCoordinator::DumpTransactions() {

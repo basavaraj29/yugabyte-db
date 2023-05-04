@@ -93,6 +93,7 @@
 #include "yb/tserver/tserver_error.h"
 
 #include "yb/tserver/xcluster_safe_time_map.h"
+#include "yb/util/async_util.h"
 #include "yb/util/backoff_waiter.h"
 #include "yb/util/crc.h"
 #include "yb/util/debug-util.h"
@@ -2726,6 +2727,77 @@ void TabletServiceImpl::GetLockStatus(const GetLockStatusRequestPB* req,
     }
   }
   context.RespondSuccess();
+}
+
+void TabletServiceImpl::CancelTransaction(
+    const CancelTransactionRequestPB* req, CancelTransactionResponsePB* resp,
+    rpc::RpcContext context) {
+  TRACE("AbortTransaction");
+
+  std::vector<LeaderTabletPeer> leader_tablet_peers(req->tablet_ids_size());
+  for (const auto& tablet_id : req->tablet_ids()) {
+    // Return if we aren't able to find the leader for any of the specified tablet ids.
+    auto leader_tablet_peer = LookupLeaderTabletOrRespond(
+        server_->tablet_peer_lookup(), tablet_id, resp, &context);
+    if (!leader_tablet_peer) {
+      return;
+    }
+    leader_tablet_peers.push_back(leader_tablet_peer);
+  }
+
+  std::vector<std::future<Result<TransactionStatusResult>>> txn_status_res_futures;
+  for (const auto& leader_tablet_peer : leader_tablet_peers) {
+    if (!leader_tablet_peer) {
+      continue;
+    }
+    if (!leader_tablet_peer.tablet->transaction_coordinator()) {
+      txn_status_res_futures.push_back(
+          MakeFuture<Result<TransactionStatusResult>>([leader_tablet_peer](auto callback) {
+              callback(STATUS_FORMAT(
+                  NotFound,
+                  Format("Transaction Coordinator not found for status tablet with id: $0",
+                          leader_tablet_peer.tablet->tablet_id())));
+          }));
+      continue;
+    }
+
+    txn_status_res_futures.push_back(
+        MakeFuture<Result<TransactionStatusResult>>(
+            [req, leader_tablet_peer](auto callback) {
+          leader_tablet_peer.tablet->transaction_coordinator()->Cancel(
+              req->transaction_id(),
+              leader_tablet_peer.leader_term,
+              [callback, peer = leader_tablet_peer.peer]
+                  (Result<TransactionStatusResult> res) {
+                if (!res.ok()) {
+                  callback(res.status());
+                  return;
+                }
+                auto leader_safe_time = peer->LeaderSafeTime();
+                if (!leader_safe_time.ok()) {
+                  callback(leader_safe_time.status());
+                  return;
+                }
+                callback(*res);
+              });
+        }));
+  }
+
+  Status status = Status::OK();
+  for (auto& future : txn_status_res_futures) {
+    const auto& res = future.get();
+    if (!res.ok()) {
+      status = res.status().CloneAndAppend(status.message());
+      continue;
+    }
+
+    // Return on observing any valid TransactionStatusResult.
+    resp->set_status(res->status);
+    context.RespondSuccess();
+    return;
+  }
+
+  SetupErrorAndRespond(resp->mutable_error(), status, &context);
 }
 
 void TabletServiceAdminImpl::TestRetry(

@@ -68,6 +68,7 @@ class PgMutationCounter;
     (CheckIfPitrActive) \
     (GetTserverCatalogVersionInfo) \
     (WaitForBackendsCatalogVersion) \
+    (CancelTransaction) \
     /**/
 
 class PgClientServiceImpl : public PgClientServiceIf {
@@ -88,6 +89,10 @@ class PgClientServiceImpl : public PgClientServiceIf {
       const PgPerformRequestPB* req, PgPerformResponsePB* resp, rpc::RpcContext context) override;
 
   void InvalidateTableCache();
+
+  Status CancelTransactionWithStatusTablet(
+      const PgCancelTransactionRequestPB& req, PgCancelTransactionResponsePB* resp,
+      rpc::RpcContext* context);
 
   size_t TEST_SessionsCount();
 

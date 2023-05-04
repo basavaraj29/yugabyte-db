@@ -140,6 +140,11 @@ class TransactionCoordinator {
 
   void Abort(const std::string& transaction_id, int64_t term, TransactionAbortCallback callback);
 
+  // Cancel function is similar to Abort, but returns NotFound when it doesn't find the transaction
+  // in the set of managed transactions. Abort function returns TransactionStatusResult::Aborted()
+  // instead.
+  void Cancel(const std::string& transaction_id, int64_t term, TransactionAbortCallback callback);
+
   std::string DumpTransactions();
 
   // Returns count of managed transactions. Used in tests.
