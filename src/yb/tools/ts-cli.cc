@@ -254,7 +254,7 @@ class TsAdminClient {
   Status ListMasterServers();
 
   Status CancelTransaction(const std::string& transaction_id,
-                           const std::vector<std::string>& status_tablet_ids);
+                           const std::string& status_tablet_id);
 
   Status AbortTransaction(const std::string& transaction_id,
                           const std::string& status_tablet_id);
@@ -693,14 +693,14 @@ Status TsAdminClient::ListMasterServers() {
 }
 
 Status TsAdminClient::CancelTransaction(const std::string& transaction_id,
-                                        const std::vector<std::string>& status_tablet_ids) {
+                                        const std::string& status_tablet_id) {
   tserver::CancelTransactionRequestPB req;
   tserver::CancelTransactionResponsePB resp;
   RpcController rpc;
 
   req.set_transaction_id(boost::algorithm::unhex(transaction_id));
-  for (const auto& status_tablet_id : status_tablet_ids) {
-    req.add_tablet_ids(status_tablet_id);
+  if (!status_tablet_id.empty()) {
+    req.set_status_tablet_id(status_tablet_id);
   }
 
   rpc.set_timeout(timeout_);
@@ -709,12 +709,12 @@ Status TsAdminClient::CancelTransaction(const std::string& transaction_id,
   if (resp.has_error()) {
     return StatusFromPB(resp.error().status());
   }
-  std::cout << "Transaction Status = " << TransactionStatus_Name(resp.status()) << "\n";
+  std::cout << "Transaction Canceled\n";
   return Status::OK();
 }
 
 Status TsAdminClient::AbortTransaction(const std::string& transaction_id,
-                                        const std::string& status_tablet_id) {
+                                       const std::string& status_tablet_id) {
   tserver::AbortTransactionRequestPB req;
   tserver::AbortTransactionResponsePB resp;
   RpcController rpc;
@@ -987,11 +987,8 @@ static int TsCliMain(int argc, char** argv) {
     }
 
     const auto& transaction_id = argv[2];
-    std::vector<std::string> status_tablet_ids;
-    for (int i = 3 ; i < argc ; i++) {
-      status_tablet_ids.push_back(argv[i]);
-    }
-    RETURN_NOT_OK_PREPEND_FROM_MAIN(client.CancelTransaction(transaction_id, status_tablet_ids),
+    std::string status_tablet_id = argc > 3 ? argv[3] : "";
+    RETURN_NOT_OK_PREPEND_FROM_MAIN(client.CancelTransaction(transaction_id, status_tablet_id),
                                     "Unable to cancel transaction");
   } else if (op == kAbortTransaction) {
     CHECK_ARGC_OR_RETURN_WITH_USAGE(op, 4);
