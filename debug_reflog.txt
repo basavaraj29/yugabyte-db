@@ -1,0 +1,103 @@
+6032ca9c5f HEAD@{0}: pull origin master: Merge made by the 'recursive' strategy.
+9972a32320 HEAD@{1}: checkout: moving from d893e0182317a9de4d13526d48657eb95bbf4391 to arcpatch-D44416
+d893e01823 HEAD@{2}: checkout: moving from master to d893e0182317a9de4d13526d48657eb95bbf4391
+f529c357f3 HEAD@{3}: checkout: moving from arcpatch-D44416 to master
+9972a32320 HEAD@{4}: commit (merge): Merge branch 'master' of github.com:yugabyte/yugabyte-db into arcpatch-D44416
+2cc6801169 HEAD@{5}: commit: Enable table-level locks and transactional DDL flag
+99c50a32c6 HEAD@{6}: checkout: moving from master to arcpatch-D44416
+f529c357f3 HEAD@{7}: checkout: moving from f529c357f3d2f36b5c6c4e464e4138d0422924c5 to master
+f529c357f3 HEAD@{8}: commit: [#29390] YSQL: Relax Object Locking debug assert check
+4475c2f116 HEAD@{9}: checkout: moving from 4cce3252331925ac6b7648873d9dc78e82968790 to 4475c2f116350da1fab5f9d8da494179aa70b1ed
+4cce325233 HEAD@{10}: rebase (pick): [DOC-1058][DOC-1041] Release notes and docs for v2025.1.2.0-b110 (#29418)
+ef7062f611 HEAD@{11}: rebase (pick): [#29390] YSQL: Relax Object Locking debug assert check
+4475c2f116 HEAD@{12}: rebase (start): checkout 4475c2f116350da1fab5f9d8da494179aa70b1ed
+7b1aca2188 HEAD@{13}: checkout: moving from relax-object-lock-sanity-assert to 7b1aca2188fbb78845b14d63d212720d71c382bd
+7b1aca2188 HEAD@{14}: checkout: moving from master to relax-object-lock-sanity-assert
+8773a7a900 HEAD@{15}: checkout: moving from 8773a7a900237394851536cb7908626c4de6f08e to master
+8773a7a900 HEAD@{16}: commit: [#29327] DocDB: Integrate YB batched COPY execution with table locks
+9c4efa3f1e HEAD@{17}: checkout: moving from 98a3a4c20efb1a8ba4f3efeeb8a28e2f530be261 to 9c4efa3f1eb5cbc58f3b48cd74ef0a2025e8a1da
+98a3a4c20e HEAD@{18}: rebase (pick): arc land: reduce (6fb580caf1cd..93648433fd5b -> 6fb580caf1cd60ea67ec0510b4d61c0e2050baa7^)
+9c4efa3f1e HEAD@{19}: rebase (start): checkout 9c4efa3f1eb5cbc58f3b48cd74ef0a2025e8a1da
+dce2c316b0 HEAD@{20}: commit: arc land: reduce (6fb580caf1cd..93648433fd5b -> 6fb580caf1cd60ea67ec0510b4d61c0e2050baa7^)
+c5ce9f142d HEAD@{21}: checkout: moving from a6c654e80c3920eafb6fbf76abc4a631bf25d82d to 6fb580caf1cd60ea67ec0510b4d61c0e2050baa7^
+a6c654e80c HEAD@{22}: commit: arc land: join (9c4efa3f1eb5 -> 93648433fd5b)
+93648433fd HEAD@{23}: rebase (abort): updating HEAD
+bdeb726785 HEAD@{24}: rebase (pick): correct flag name
+50f12d78b1 HEAD@{25}: rebase (pick): new test that fails without the fix
+6a41663b65 HEAD@{26}: rebase (pick): fix lint
+43fdc1a3dc HEAD@{27}: rebase (pick): [#29327] DocDB: Integrate YB batched COPY execution with table locks
+9c4efa3f1e HEAD@{28}: rebase (start): checkout 9c4efa3f1eb5cbc58f3b48cd74ef0a2025e8a1da
+93648433fd HEAD@{29}: checkout: moving from fix-copy-table-locks-bug to 93648433fd5b837134a65878959ebff5b78e3674
+93648433fd HEAD@{30}: checkout: moving from master to fix-copy-table-locks-bug
+3eaad113ac HEAD@{31}: reset: moving to HEAD
+3eaad113ac HEAD@{32}: pull: Fast-forward
+64e60d1dd4 HEAD@{33}: checkout: moving from relax-object-lock-sanity-assert to master
+7b1aca2188 HEAD@{34}: pull origin master: Merge made by the 'recursive' strategy.
+3ae21db234 HEAD@{35}: checkout: moving from fix-copy-table-locks-bug to relax-object-lock-sanity-assert
+93648433fd HEAD@{36}: pull origin master: Merge made by the 'recursive' strategy.
+41f3b607ac HEAD@{37}: commit: address memory leak issue with calling ExecOpenIndices again
+72d806f050 HEAD@{38}: checkout: moving from c661d9fe9dd7b88fe8d3d4f775df3d0975cdb28c to fix-copy-table-locks-bug
+c661d9fe9d HEAD@{39}: commit: [BACKPORT 2025.1][#28593] DocDB: Fix retries for first stmt in RC + Address rollback for session adv locks
+15881cda0b HEAD@{40}: checkout: moving from 5731acf0d0566d5a668c574ef62f3d91ba9d51f7 to 15881cda0b28f3b2b9cfa8b2a5d90bea5c8735a8
+5731acf0d0 HEAD@{41}: checkout: moving from arcpatch-D48452 to 5731acf0d0566d5a668c574ef62f3d91ba9d51f7
+5731acf0d0 HEAD@{42}: checkout: moving from arcpatch-D48452_1 to arcpatch-D48452
+f004f1a6f9 HEAD@{43}: commit: [BACKPORT 2025.1][#28593] DocDB: Fix retries for first stmt in RC + Address rollback for session adv locks
+15881cda0b HEAD@{44}: checkout: moving from arcpatch-D48452 to arcpatch-D48452_1
+5731acf0d0 HEAD@{45}: commit: [BACKPORT 2025.1][#28593] DocDB: Fix retries for first stmt in RC + Address rollback for session adv locks
+15881cda0b HEAD@{46}: checkout: moving from relax-object-lock-sanity-assert to arcpatch-D48452
+3ae21db234 HEAD@{47}: commit (amend): [#29390] YSQL: Relax Object Locking debug assert check
+ec0d2c051a HEAD@{48}: commit (amend): [#29390] YSQL: Relax Object Locking debug assert check
+7e77721317 HEAD@{49}: commit: relax the object locking assert check
+64e60d1dd4 HEAD@{50}: checkout: moving from master to relax-object-lock-sanity-assert
+64e60d1dd4 HEAD@{51}: checkout: moving from fix-copy-table-locks-bug to master
+72d806f050 HEAD@{52}: commit: modify comment
+09bef13b1d HEAD@{53}: pull origin master: Merge made by the 'recursive' strategy.
+8ac0ca3bd6 HEAD@{54}: commit: remove new unit test since it fails
+10cfa38639 HEAD@{55}: checkout: moving from master to fix-copy-table-locks-bug
+64e60d1dd4 HEAD@{56}: checkout: moving from f8e137733b5d35cb39e3376c9a74577876a7a155 to master
+f8e137733b HEAD@{57}: commit: [BACKPORT 2025.2][#29389] YSQL: Acquire object locks on relation(s) for yb_index_check
+d7d91b5ad6 HEAD@{58}: checkout: moving from f8e137733b5d35cb39e3376c9a74577876a7a155 to d7d91b5ad6f31b5054415d384274f5d1846d2a41
+f8e137733b HEAD@{59}: rebase (pick): [BACKPORT 2025.2][#29389] YSQL: Acquire object locks on relation(s) for yb_index_check
+d7d91b5ad6 HEAD@{60}: rebase (start): checkout d7d91b5ad6f31b5054415d384274f5d1846d2a41
+490da46d1f HEAD@{61}: checkout: moving from arcpatch-D48413 to 490da46d1ffc95a5f93dbefb447e7e66f901c015
+490da46d1f HEAD@{62}: checkout: moving from arcpatch-D48413_1 to arcpatch-D48413
+ccd5805af4 HEAD@{63}: commit: [BACKPORT 2025.2][#29389] YSQL: Acquire object locks on relation(s) for yb_index_check
+8a7a3bf586 HEAD@{64}: checkout: moving from arcpatch-D48413 to arcpatch-D48413_1
+490da46d1f HEAD@{65}: commit: [BACKPORT 2025.2][#29389] YSQL: Acquire object locks on relation(s) for yb_index_check
+8a7a3bf586 HEAD@{66}: checkout: moving from master to arcpatch-D48413
+64e60d1dd4 HEAD@{67}: checkout: moving from d7d91b5ad6f31b5054415d384274f5d1846d2a41 to master
+d7d91b5ad6 HEAD@{68}: commit: [BACKPORT 2025.2][#29382] DocDB: Disable object locking for PggateTest suite
+51ab454192 HEAD@{69}: checkout: moving from d7d91b5ad6f31b5054415d384274f5d1846d2a41 to 51ab4541929d0b6b40d05f18f29fb7afa6be256a
+d7d91b5ad6 HEAD@{70}: rebase (pick): [BACKPORT 2025.2][#29382] DocDB: Disable object locking for PggateTest suite
+51ab454192 HEAD@{71}: rebase (start): checkout 51ab4541929d0b6b40d05f18f29fb7afa6be256a
+f78966b3f7 HEAD@{72}: checkout: moving from arcpatch-D48414 to f78966b3f7bf9aab419846760ac6d9ba3d711eed
+f78966b3f7 HEAD@{73}: checkout: moving from arcpatch-D48414_1 to arcpatch-D48414
+8dca0cc0df HEAD@{74}: commit: [BACKPORT 2025.2][#29382] DocDB: Disable object locking for PggateTest suite
+8a7a3bf586 HEAD@{75}: checkout: moving from arcpatch-D48414 to arcpatch-D48414_1
+f78966b3f7 HEAD@{76}: commit: [BACKPORT 2025.2][#29382] DocDB: Disable object locking for PggateTest suite
+8a7a3bf586 HEAD@{77}: checkout: moving from master to arcpatch-D48414
+64e60d1dd4 HEAD@{78}: checkout: moving from 64e60d1dd4ce011ff5652c1a936510b0e1f11a9a to master
+64e60d1dd4 HEAD@{79}: commit: [#29382] DocDB: Disable object locking for PggateTest suite
+59c8dab1e6 HEAD@{80}: checkout: moving from 762015667177b6883efd36a177a66414cb794e8c to 59c8dab1e676dd4e90e1c0afa06ea1194e772575
+7620156671 HEAD@{81}: rebase (pick): [#29382] DocDB: Disable object locking for PggateTest suite
+59c8dab1e6 HEAD@{82}: rebase (start): checkout 59c8dab1e676dd4e90e1c0afa06ea1194e772575
+19eb605696 HEAD@{83}: checkout: moving from fix-ybc-pg-select-test-issue to 19eb6056962b8c3d08c482bac88e004452498eae
+19eb605696 HEAD@{84}: checkout: moving from master to fix-ybc-pg-select-test-issue
+59c8dab1e6 HEAD@{85}: checkout: moving from 59c8dab1e676dd4e90e1c0afa06ea1194e772575 to master
+59c8dab1e6 HEAD@{86}: commit: [#29389] YSQL: Acquire object locks on relation(s) for yb_index_check
+e4179eba1b HEAD@{87}: checkout: moving from 3c565f980903cd46608c3000bf1874990aca601f to e4179eba1bd2b095faddd839e647b7904e216938
+3c565f9809 HEAD@{88}: rebase (pick): [#29389] YSQL: Acquire object locks on relation(s) for yb_index_check
+e4179eba1b HEAD@{89}: rebase (start): checkout e4179eba1bd2b095faddd839e647b7904e216938
+34b5449035 HEAD@{90}: checkout: moving from yb_index_check-table-locks-integration to 34b5449035587f2402146d81b931593dff863fca
+34b5449035 HEAD@{91}: reset: moving to HEAD
+34b5449035 HEAD@{92}: reset: moving to HEAD
+34b5449035 HEAD@{93}: commit (amend): [#29389] YSQL: Acquire object locks on relation(s) for yb_index_check
+aaecc9ac53 HEAD@{94}: commit (amend): [#29389] YSQL: Acquire object locks on relation(s) for yb_index_check
+5e21cccd47 HEAD@{95}: commit: acquire object locks on relation for yb_index_check
+1a21c29a01 HEAD@{96}: checkout: moving from master to yb_index_check-table-locks-integration
+1a21c29a01 HEAD@{97}: pull: Fast-forward
+830773fcae HEAD@{98}: checkout: moving from 91bb19d30a26ccf530c314206c266f8866430965 to master
+91bb19d30a HEAD@{99}: checkout: moving from fix-copy-table-locks-bug to 91bb19d30a26ccf530c314206c266f8866430965
+10cfa38639 HEAD@{100}: reset: moving to HEAD
+10cfa38639 HEAD@{101}: pull origin master: Merge made by the 'recursive' strategy.
+1674f2c2dc HEAD@{102}: commit: correct flag name
